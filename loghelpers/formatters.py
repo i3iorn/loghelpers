@@ -19,7 +19,6 @@ class JsonFormatter(logging.Formatter):
         self.context = LoggingContext()
 
     def format(self, record: logging.LogRecord) -> str:
-        import json
         payload = {
             "timestamp": self.formatTime(record, self.datefmt),
             "logger": record.name,
