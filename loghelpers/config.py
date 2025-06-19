@@ -1,11 +1,10 @@
 # loghelpers/config.py
 import enum
 import logging
-import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from threading import RLock
 from typing import Optional, Any, Set
-from pathlib import Path
 
 from .exceptions import (
     InvalidConfigurationKeyException,
@@ -53,6 +52,8 @@ class Feature(enum.Flag):
     """
     NONE = 0
     ALLOW_PROVIDER_OVERWRITE = enum.auto()
+    REDACT_SENSITIVE_DATA = enum.auto()
+    MUTABLE_PROVIDER_KEYS = enum.auto()
 
 
 _CONFIG_LOADER_MAP = {
@@ -63,9 +64,76 @@ _CONFIG_LOADER_MAP = {
 }
 
 
+class FeatureManager:
+    """
+    Singleton class to manage features in the application.
+
+    This class allows enabling, disabling, and toggling features,
+    and provides a way to check if a feature is enabled.
+    """
+    _instance: Optional["FeatureManager"] = None
+    _features: Feature = Feature.NONE
+
+    def __new__(cls, config: "Configuration"):
+        if cls._instance is None:
+            cls._instance = super(FeatureManager, cls).__new__(cls)
+            cls._instance.config = config
+        return cls._instance
+
+    def is_enabled(self, feature: Feature) -> bool:
+        """
+        Check if a feature is enabled.
+        Args:
+            feature (Feature): Feature to check.
+
+        Returns:
+            bool: True if the feature is enabled, False otherwise.
+        """
+        return feature in self._features
+
+    def enable(self, feature: Feature) -> None:
+        """
+        Enable a feature.
+        Args:
+            feature (Feature): Feature to enable.
+
+        Returns:
+            None
+        """
+        self._features |= feature
+
+    def disable(self, feature: Feature) -> None:
+        """
+        Disable a feature.
+        Args:
+            feature (Feature): Feature to disable.
+
+        Returns:
+            None
+        """
+        self._features &= ~feature
+
+    def toggle(self, feature: Feature) -> None:
+        """
+        Toggle the state of a feature.
+
+        If the feature is enabled, it will be disabled, and vice versa.
+
+        Args:
+            feature (Feature): The feature to toggle.
+        """
+        if self.is_enabled(feature):
+            self.disable(feature)
+        else:
+            self.enable(feature)
+
+    def __repr__(self):
+        return f"FeatureManager(features={' | '.join(f.name for f in self._features)})"
+
+
+
 @dataclass
 class Configuration:
-    features: Feature = Feature.NONE
     debug: bool = False
     log_level: str = "INFO"
     log_file: str = str(Path(get_root_path()) / "app.log")
@@ -82,6 +150,8 @@ class Configuration:
         """
         Post-initialization to set the logging level.
         """
+        self.features: FeatureManager = FeatureManager(self)
+        self.features.enable(Feature.REDACT_SENSITIVE_DATA)
         self.log_level = self.log_level.upper()
         logging.getLogger().setLevel(self.log_level)
 
@@ -192,22 +262,3 @@ class Configuration:
 
         if not isinstance(self.log_level, str):
             raise ValueError("Log level must be a string.")
-
-
-class FeatureManager:
-    _instance: Optional["FeatureManager"] = None
-
-    def __new__(cls, config: Configuration):
-        if cls._instance is None:
-            cls._instance = super(FeatureManager, cls).__new__(cls)
-            cls._instance.config = config
-        return cls._instance
-
-    def is_enabled(self, feature: Feature) -> bool:
-        return feature in self.config.features
-
-    def enable(self, feature: Feature) -> None:
-        self.config.features |= feature
-
-    def disable(self, feature: Feature) -> None:
-        self.config.features &= ~feature
