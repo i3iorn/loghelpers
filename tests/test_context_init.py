@@ -43,7 +43,7 @@ def test_context_manager_temporarily_sets_context():
     assert context["user"] == "Alice"
 
 def test_resolve_context_merges_providers_and_context():
-    config = Configuration(features=Feature.NONE)
+    config = Configuration()
     LoggingContext.set_context(user="Alice")
     ContextProviders.register("provider1", lambda: {"action": "login"})
     context = LoggingContext().resolve_context(config)
@@ -52,7 +52,8 @@ def test_resolve_context_merges_providers_and_context():
     ContextProviders.unregister("provider1")
 
 def test_resolve_context_allows_provider_overwrite_when_enabled():
-    config = Configuration(features=Feature.ALLOW_PROVIDER_OVERWRITE)
+    config = Configuration()
+    config.features.enable(Feature.MUTABLE_PROVIDER_KEYS)
     LoggingContext.set_context(user="Alice")
     ContextProviders.register("provider1", lambda: {"user": "Bob"})
     context = LoggingContext().resolve_context(config)
@@ -60,15 +61,16 @@ def test_resolve_context_allows_provider_overwrite_when_enabled():
     ContextProviders.unregister("provider1")
 
 def test_resolve_context_raises_exception_on_duplicate_keys_when_not_allowed():
-    config = Configuration(features=Feature.NONE)
+    config = Configuration()
     LoggingContext.set_context(user="Alice")
     ContextProviders.register("provider1", lambda: {"user": "Bob"})
+    config.features.disable(Feature.MUTABLE_PROVIDER_KEYS)
     with pytest.raises(DuplicateProviderKeyException):
         LoggingContext().resolve_context(config)
     ContextProviders.unregister("provider1")
 
 def test_resolve_context_handles_provider_exceptions_gracefully():
-    config = Configuration(features=Feature.NONE)
+    config = Configuration()
     ContextProviders.register("provider1", lambda: 1 / 0)
     with pytest.raises(ProviderExecutionException):
         LoggingContext().resolve_context(config)

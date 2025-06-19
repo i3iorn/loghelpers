@@ -1,17 +1,19 @@
-import pytest
 import logging
 
-from loghelpers import ColorFormatter, JsonFormatter, Configuration
+import pytest
+
+from loghelpers import ColorFormatter, JsonFormatter
+from loghelpers import Configuration
 from loghelpers.context import LoggingContext, ContextProviders
 from loghelpers.utils import BatchForegroundColors
 
 
 @pytest.fixture
-def default_config() -> Configuration:
-    """Fixture to provide a default configuration for testing."""
+def default_config():
     return Configuration(
         log_level="INFO",
-        log_format="%(message)s",
+        log_file="test.log",
+        log_format="%(message)s"
     )
 
 

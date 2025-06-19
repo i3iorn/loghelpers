@@ -1,7 +1,9 @@
 import logging
-import os
+
 import pytest
-from loghelpers.config import Configuration, Feature
+
+from loghelpers import Configuration
+from loghelpers.config import Feature
 from loghelpers.exceptions import UnsupportedConfigurationFormatException
 
 
@@ -10,9 +12,9 @@ def default_config():
     return Configuration(
         log_level="INFO",
         log_file="test.log",
-        log_format="%(message)s",
-        features=Feature.NONE
+        log_format="%(message)s"
     )
+
 
 @pytest.fixture
 def feature_manager(default_config):
