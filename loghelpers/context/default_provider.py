@@ -23,6 +23,6 @@ class DefaultProvider:
             "os": os.name,
             "sys_platform": sys.platform,
             "python_version": sys.version,
-            "current_file": inspect.getfile(inspect.currentframe()),
-            "current_function": inspect.currentframe().f_code.co_name,
+            "current_file": inspect.getfile(inspect.currentframe()) if inspect.currentframe() else None,
+            "current_function": inspect.currentframe().f_code.co_name if inspect.currentframe() else None,
         }

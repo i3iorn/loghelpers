@@ -1,9 +1,11 @@
 # loghelpers/formatters.py
 import logging
 
-from . import Configuration
-from .context import gather_context
-from .utils import BatchForegroundColors, BatchBackgroundColors, redact
+import orjson
+
+from .config import Configuration
+from .context import LoggingContext
+from .utils import BatchForegroundColors, BatchBackgroundColors
 
 
 class JsonFormatter(logging.Formatter):
@@ -14,6 +16,7 @@ class JsonFormatter(logging.Formatter):
             datefmt=config.date_format
         )
         self.config = config
+        self.context = LoggingContext()
 
     def format(self, record: logging.LogRecord) -> str:
         import json
@@ -24,22 +27,23 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
         payload.update(
-            gather_context(self.config)
+            self.context.resolve_context(self.config)
         )
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
-        return json.dumps(redact(payload))
+        return orjson.dumps(self.config.redactor.redact(payload)).decode()
+
 
 class ColorFormatter(logging.Formatter):
     """Adds ANSI color codes based on level."""
     COLORS = {
-        logging.DEBUG: BatchForegroundColors.BLUE,
-        logging.INFO: BatchForegroundColors.WHITE,
-        logging.WARNING: BatchForegroundColors.YELLOW,
-        logging.ERROR: BatchForegroundColors.RED,
-        logging.CRITICAL: BatchBackgroundColors.RED,
+        logging.DEBUG: BatchForegroundColors.BLUE.value,
+        logging.INFO: BatchForegroundColors.WHITE.value,
+        logging.WARNING: BatchForegroundColors.YELLOW.value,
+        logging.ERROR: BatchForegroundColors.RED.value,
+        logging.CRITICAL: BatchBackgroundColors.RED.value,
     }
-    RESET = BatchForegroundColors.GREY
+    RESET = BatchForegroundColors.GREY.value
 
     def format(self, record: logging.LogRecord) -> str:
         prefix = self.COLORS.get(record.levelno, "")

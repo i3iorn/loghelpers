@@ -3,23 +3,22 @@ import logging
 import os
 from logging import Handler, StreamHandler
 from logging.handlers import RotatingFileHandler
+from typing import List
 
 from .config import Configuration
 from .formatters import ColorFormatter, JsonFormatter
+from .redaction import Redactor
 from .utils import get_root_path
 
 
 class SensitiveDataFilter(logging.Filter):
-    """
-    A logging filter to mask sensitive data in log messages.
-    """
-
-    SENSITIVE_KEYS = ["password", "token", "secret"]
+    def __init__(self, config: Configuration):
+        super().__init__()
+        self.redactor = config
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.msg, str):
-            for key in self.SENSITIVE_KEYS:
-                record.msg = record.msg.replace(key, "***")
+            record.msg = self.redactor.redact(record.msg)
         return True
 
 

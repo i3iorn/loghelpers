@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from threading import RLock
 from typing import Dict
 
+from . import DefaultProvider
 from .protocols import ProviderProtocol
 from ..exceptions import (
     InvalidProviderNameException, InvalidProviderException, DuplicateProviderException,
@@ -19,12 +20,13 @@ class ContextProviders:
     _providers = {}
 
     @classmethod
-    def register(cls, name: str, provider: ProviderProtocol) -> None:
+    def register(cls, name: str, provider: ProviderProtocol, override: bool = False) -> None:
         """
         Register a context provider with a given name.
         Args:
             name (str): The name of the context provider.
             provider (ProviderProtocol): The context provider instance to register.
+            override (bool): If True, allows overriding an existing provider with the same name.
 
         Returns:
 
@@ -33,8 +35,9 @@ class ContextProviders:
             raise InvalidProviderException(name, "Provider must implement ProviderProtocol")
         if not name or not isinstance(name, str):
             raise InvalidProviderNameException(name)
-        if name in cls.all():
+        if name in cls.all() and not override:
             raise DuplicateProviderException(name)
+
         with cls._lock:
             cls._providers[name] = provider
 
@@ -96,7 +99,7 @@ class ContextProviders:
         """
         with cls._lock:
             cls._providers = {
-                "default": cls._providers.get("default", None),
+                "default": DefaultProvider(),
             }
 
     @classmethod
@@ -128,10 +131,10 @@ class ContextProviders:
     @contextmanager
     def temporary_provider(cls, name: str, provider: ProviderProtocol):
         old = cls.get(name, strict=False)
-        cls.register(name, provider)
+        cls.register(name, provider, True)
         try:
             yield
         finally:
             cls.unregister(name)
             if old:
-                cls.register(name, old)
+                cls.register(name, old, True)

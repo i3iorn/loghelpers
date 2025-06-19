@@ -1,7 +1,6 @@
 # loghelpers/decorators.py
 import logging
 import functools
-from .utils import get_logger
 from contextlib import ContextDecorator
 from typing import Optional
 
@@ -26,9 +25,10 @@ class temporary_level(ContextDecorator):
             self.logger.setLevel(self.old_level)
 
 
-def log_calls(level: int = None):
+def log_calls(level: int = None, injected_logger: logging.Logger = None):
+    """Decorator to log function calls with entry and exit messages."""
     def decorator(fn):
-        logger = get_logger(fn.__module__)
+        logger = injected_logger or logging.getLogger(fn.__module__)
         lvl = level or logger.level
 
         @functools.wraps(fn)

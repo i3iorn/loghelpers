@@ -1,13 +1,18 @@
 # loghelpers/config.py
 import enum
 import logging
+import re
 from dataclasses import dataclass, field
 from threading import RLock
-from typing import Optional, Dict, Any
+from typing import Optional, Any, Set
 from pathlib import Path
 
-from .exceptions import InvalidConfigurationKeyException, \
-    UnsupportedConfigurationFormatException, ConfigurationLoadException
+from .exceptions import (
+    InvalidConfigurationKeyException,
+    UnsupportedConfigurationFormatException,
+    ConfigurationLoadException
+)
+from .redaction import Redactor
 from .utils import get_root_path
 
 TRACE_LEVEL = 5
@@ -32,6 +37,14 @@ logging.Logger.success = success
 
 
 SENSITIVE_KEYS = {"password", "token", "secret", "ssn", "email"}
+
+# ISO date pattern for YYYY-MM-DD format which only matches valid dates
+ISO_DATE_PATTERN = r'^(?:(?:19|20)\d{2}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01]))|(?:0[1-9]|[12][0-9]|3[01])-(?:0[1-9]|1[0-2])-(?:19|20)\d{2})$'
+SWEDISH_SOCIAL_SECURITY_NUMBER_PATTERN = ISO_DATE_PATTERN + r'[+-]?\d{4}$'
+
+SENSITIVE_PATTERNS = [
+    SWEDISH_SOCIAL_SECURITY_NUMBER_PATTERN
+]
 
 
 class Feature(enum.Flag):
@@ -59,7 +72,10 @@ class Configuration:
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     date_format: str = "%Y-%m-%d %H:%M:%S"
     sample_rate: float = 1.0
-    sensitive_keys: set[str] = field(default_factory=lambda: SENSITIVE_KEYS)
+    redactor: Redactor = field(default_factory=lambda: Redactor(
+        sensitive_keys=SENSITIVE_KEYS,
+        redact_value_patterns=SENSITIVE_PATTERNS
+    ))
     _lock: RLock = field(default_factory=RLock, init=False, repr=False)
 
     def __post_init__(self):
@@ -68,6 +84,29 @@ class Configuration:
         """
         self.log_level = self.log_level.upper()
         logging.getLogger().setLevel(self.log_level)
+
+    @property
+    def sensitive_keys(self) -> Set[str]:
+        """
+        Get the set of sensitive keys.
+
+        Returns:
+            set[str]: The set of sensitive keys.
+        """
+        with self._lock:
+            return self.redactor.sensitive_keys
+
+    def add_sensitive_key(self, key: str) -> None:
+        """
+        Add a sensitive key to the configuration.
+
+        Args:
+            key (str): The sensitive key to add.
+        """
+        with self._lock:
+            if not isinstance(key, str):
+                raise ValueError("Sensitive key must be a string.")
+            self.redactor.sensitive_keys.add(key)
 
     def update_log_level(self, level: str) -> None:
         with self._lock:
@@ -80,7 +119,9 @@ class Configuration:
 
     def update_sensitive_keys(self, keys: set[str]) -> None:
         with self._lock:
-            self.sensitive_keys = keys
+            if not isinstance(keys, set):
+                raise ValueError("Sensitive keys must be a set.")
+            self.redactor.sensitive_keys = keys
 
     def _get_loader_format(self, file_format: str) -> Any:
         """
@@ -93,15 +134,20 @@ class Configuration:
             Callable: A function to load the configuration data.
         """
         if file_format in _CONFIG_LOADER_MAP:
-            if _CONFIG_LOADER_MAP[file_format] == "orjson":
-                import orjson
-                return orjson.loads
-            elif _CONFIG_LOADER_MAP[file_format] == "yaml":
-                import yaml
-                return yaml.safe_load
-            elif _CONFIG_LOADER_MAP[file_format] == "toml":
-                import toml
-                return toml.load
+            try:
+                if _CONFIG_LOADER_MAP[file_format] == "orjson":
+                    import orjson
+                    return orjson.loads
+                elif _CONFIG_LOADER_MAP[file_format] == "yaml":
+                    import yaml
+                    return yaml.safe_load
+                elif _CONFIG_LOADER_MAP[file_format] == "toml":
+                    import toml
+                    return toml.load
+            except ModuleNotFoundError as e:
+                raise UnsupportedConfigurationFormatException(
+                    f"Required module for {file_format} format is not installed: {e}"
+                )
 
         raise UnsupportedConfigurationFormatException(file_format)
 
@@ -116,7 +162,6 @@ class Configuration:
         if not file_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-        import json
         with open(file_path, 'r') as f:
             file_format = file_path.suffix[1:].lower()
             loader = self._get_loader_format(file_format)
@@ -142,7 +187,7 @@ class Configuration:
         if self.sample_rate < 0.0 or self.sample_rate > 1.0:
             raise ValueError("Sample rate must be between 0.0 and 1.0.")
 
-        if not isinstance(self.sensitive_keys, set):
+        if not isinstance(self._sensitive_keys, set):
             raise ValueError("Sensitive keys must be a set.")
 
         if not isinstance(self.log_level, str):

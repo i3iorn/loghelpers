@@ -1,16 +1,28 @@
 # loghelpers/context/__init__.py
 import contextvars
+import logging
 from contextlib import contextmanager
 from typing import Dict, Generator
 
-from .. import Configuration
-from ..config import Feature
+from ..config import Feature, Configuration
 from ..context.default_provider import DefaultProvider
 from ..context.registry import ContextProviders
 from ..exceptions import ProviderExecutionException, DuplicateProviderKeyException
 
 ContextProviders.register("default", DefaultProvider())
 
+
+# Update the log record factory to handle more context variables
+"""
+old_factory = logging.getLogRecordFactory()
+
+def record_factory(*args, **kwargs):
+    record = old_factory(*args, **kwargs)
+    record.custom_attribute = 0xdecafbad
+    return record
+
+logging.setLogRecordFactory(record_factory)
+"""
 
 class LoggingContext:
     """
@@ -29,7 +41,7 @@ class LoggingContext:
         Args:
             **kwargs: Key-value pairs to set in the logging context.
         """
-        context = cls._context_var.get().copy()
+        context = cls.get_context().copy()
         context.update(kwargs)
         cls._context_var.set(context)
 
