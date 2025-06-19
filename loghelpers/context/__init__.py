@@ -1,6 +1,5 @@
 # loghelpers/context/__init__.py
 import contextvars
-import logging
 from contextlib import contextmanager
 from typing import Dict, Generator
 
@@ -98,6 +97,8 @@ class LoggingContext:
         base_context = self.get_context().copy()
         providers = ContextProviders.gather()
 
+        print(providers, config.features)
+
         for name, provider in providers.items():
             try:
                 result = provider()
@@ -107,7 +108,7 @@ class LoggingContext:
             for key, value in result.items():
                 if key not in base_context:
                     base_context[key] = value
-                elif Feature.ALLOW_PROVIDER_OVERWRITE in config.features:
+                elif config.features.is_enabled(Feature.MUTABLE_PROVIDER_KEYS):
                     base_context[key] = value
                 else:
                     raise DuplicateProviderKeyException(name, key)
