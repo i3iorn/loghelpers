@@ -3,18 +3,16 @@ import logging
 import os
 from logging import Handler, StreamHandler
 from logging.handlers import RotatingFileHandler
-from typing import List
 
 from .config import Configuration
 from .formatters import ColorFormatter, JsonFormatter
-from .redaction import Redactor
 from .utils import get_root_path
 
 
 class SensitiveDataFilter(logging.Filter):
     def __init__(self, config: Configuration):
         super().__init__()
-        self.redactor = config
+        self.redactor = config.redactor
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.msg, str):
@@ -35,7 +33,7 @@ def create_console_handler(config: Configuration) -> Handler:
     handler = StreamHandler()
     handler.setLevel(config.log_level)
     handler.setFormatter(ColorFormatter(fmt="[{levelname}] {message}", style="{"))
-    handler.addFilter(SensitiveDataFilter())
+    handler.addFilter(SensitiveDataFilter(config))
     return handler
 
 
@@ -62,7 +60,7 @@ def create_file_handler(config: Configuration) -> Handler:
     )
     handler.setLevel(config.log_level)
     handler.setFormatter(JsonFormatter(config))
-    handler.addFilter(SensitiveDataFilter())
+    handler.addFilter(SensitiveDataFilter(config))
     return handler
 
 
