@@ -1,14 +1,77 @@
-
-# Requirements for the project
 [project]
-name = "example_project"
+name = "loghelpers"
 version = "0.1.0"
-description = "An example project to demonstrate pyproject.toml usage"
-authors = [
-    { name = "John Doe", email = "" },
-]
+description = "Structured logging utilities with context-aware redaction, trace ID propagation, and lazy evaluation."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.8"
-dependencies = [
-    "orjson>=3.8.0",
+
+authors = [
+    { name = "Björn Schrammel", email = "loghelpers@schrammel.dev" }
 ]
+
+keywords = [
+    "logging",
+    "structured-logging",
+    "contextvars",
+    "trace-id",
+    "log-redaction",
+    "lazy-evaluation"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Logging",
+]
+
+dependencies = [
+    "orjson>=3.8.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "flake8>=7.0",
+    "isort>=5.13",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+    "pytest>=8.2"
+]
+
+[project.urls]
+Homepage = "https://github.com/i3iorn/loghelpers"
+Repository = "https://github.com/i3iorn/loghelpers"
+Issues = "https://github.com/i3iorn/loghelpers/issues"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["loghelpers"]
+force_single_line = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [".venv", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.8"
+ignore_missing_imports = true
+strict = true
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
