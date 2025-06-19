@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Protocol, Union, runtime_checkable, Set
+from typing import Any, List, Protocol, runtime_checkable, Set, Iterable
 
 
 @runtime_checkable
@@ -36,7 +36,7 @@ class Redactor:
 
     def __init__(
         self,
-        sensitive_keys: Set[str],
+            sensitive_keys: Iterable[str],
         redact_value_patterns: List[str] = None,
         redaction_token: str = "<redacted>"
     ):
