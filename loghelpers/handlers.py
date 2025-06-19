@@ -1,12 +1,26 @@
+import importlib
 import logging
 import os
 from logging import Handler, StreamHandler
 from logging.handlers import RotatingFileHandler
-from typing import Optional
 
 from .config import Configuration
 from .formatters import ColorFormatter, JsonFormatter
 from .utils import get_root_path
+
+
+class SensitiveDataFilter(logging.Filter):
+    """
+    A logging filter to mask sensitive data in log messages.
+    """
+
+    SENSITIVE_KEYS = ["password", "token", "secret"]
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            for key in self.SENSITIVE_KEYS:
+                record.msg = record.msg.replace(key, "***")
+        return True
 
 
 def create_console_handler(config: Configuration) -> Handler:
@@ -22,6 +36,7 @@ def create_console_handler(config: Configuration) -> Handler:
     handler = StreamHandler()
     handler.setLevel(config.log_level)
     handler.setFormatter(ColorFormatter(fmt="[{levelname}] {message}", style="{"))
+    handler.addFilter(SensitiveDataFilter())
     return handler
 
 
@@ -48,38 +63,27 @@ def create_file_handler(config: Configuration) -> Handler:
     )
     handler.setLevel(config.log_level)
     handler.setFormatter(JsonFormatter(config))
+    handler.addFilter(SensitiveDataFilter())
     return handler
 
 
-def create_json_file_handler(
-    path: Optional[str] = None,
-    level: Optional[str] = "INFO",
-    max_bytes: int = 5 * 1024 * 1024,
-    backup_count: int = 3,
-) -> Handler:
+def load_handler(handler_name: str, **kwargs) -> logging.Handler:
     """
-    Create a standalone JSON-formatted file handler, optionally outside the Configuration object.
+    Dynamically load a logging handler by its name.
 
     Args:
-        path (Optional[str]): Path to the log file.
-        level (Optional[str]): Logging level as a string.
-        max_bytes (int): Max file size before rotation.
-        backup_count (int): Number of rotated logs to retain.
+        handler_name (str): The name of the handler class to load.
+        **kwargs: Additional arguments to pass to the handler.
 
     Returns:
-        Handler: Configured RotatingFileHandler with JSON output.
-    """
-    path = path or os.path.join(get_root_path(), "json.log")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+        logging.Handler: An instance of the requested handler.
 
-    handler = RotatingFileHandler(
-        filename=path,
-        mode="a",
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8",
-        delay=True,
-    )
-    handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-    handler.setFormatter(JsonFormatter())
-    return handler
+    Raises:
+        ImportError: If the handler cannot be found.
+    """
+    try:
+        module = importlib.import_module("loghelpers.handlers")
+        handler_class = getattr(module, handler_name)
+        return handler_class(**kwargs)
+    except (AttributeError, ImportError) as e:
+        raise ImportError(f"Handler '{handler_name}' could not be loaded: {e}")

@@ -1,4 +1,5 @@
 # loghelpers/context/registry.py
+from contextlib import contextmanager
 from threading import RLock
 from typing import Dict
 
@@ -122,3 +123,15 @@ class ContextProviders:
         """
         with cls._lock:
             return cls._providers.copy()
+
+    @classmethod
+    @contextmanager
+    def temporary_provider(cls, name: str, provider: ProviderProtocol):
+        old = cls.get(name, strict=False)
+        cls.register(name, provider)
+        try:
+            yield
+        finally:
+            cls.unregister(name)
+            if old:
+                cls.register(name, old)

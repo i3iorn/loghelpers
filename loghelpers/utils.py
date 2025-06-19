@@ -1,7 +1,9 @@
 # loghelpers/utils.py
+import importlib
 import logging
 from enum import Enum
 
+from . import Configuration
 from .config import SENSITIVE_KEYS, Configuration
 from .handlers import create_file_handler, create_console_handler
 
@@ -73,3 +75,25 @@ def get_logger(name: str) -> logging.Logger:
         logging.Logger: The logger instance.
     """
     return logging.getLogger(name)
+
+
+def load_formatter(formatter_name: str, config: Configuration) -> logging.Formatter:
+    """
+    Dynamically load a formatter by its name.
+
+    Args:
+        formatter_name (str): The name of the formatter class to load.
+        config (Configuration): The configuration object to pass to the formatter.
+
+    Returns:
+        logging.Formatter: An instance of the requested formatter.
+
+    Raises:
+        ImportError: If the formatter cannot be found.
+    """
+    try:
+        module = importlib.import_module("loghelpers.formatters")
+        formatter_class = getattr(module, formatter_name)
+        return formatter_class(config)
+    except (AttributeError, ImportError) as e:
+        raise ImportError(f"Formatter '{formatter_name}' could not be loaded: {e}")

@@ -11,6 +11,5 @@ __all__ = [
     "JsonFormatter",
     "ColorFormatter",
     "log_calls",
-    "temporary_level",
 ]
 

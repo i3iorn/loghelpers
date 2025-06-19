@@ -24,7 +24,7 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
         payload.update(
-            gather_context()
+            gather_context(self.config)
         )
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
@@ -45,3 +45,4 @@ class ColorFormatter(logging.Formatter):
         prefix = self.COLORS.get(record.levelno, "")
         message = super().format(record)
         return f"{prefix}{message}{self.RESET}"
+

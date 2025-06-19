@@ -8,7 +8,6 @@ class ProviderProtocol(Protocol):
     Protocol for context providers.
     A context provider should implement a callable that returns a dictionary of context data.
     """
-
     def __call__(self) -> Dict[str, str]:
         """
         Call the context provider to retrieve context data.

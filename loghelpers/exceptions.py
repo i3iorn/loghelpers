@@ -61,3 +61,29 @@ class DuplicateProviderException(ContextProviderException):
     def __init__(self, provider_name: str):
         super().__init__(f"Context provider '{provider_name}' is already registered.")
         self.provider_name = provider_name
+
+
+class ConfigurationException(Exception):
+    """Base class for configuration-related exceptions."""
+    pass
+
+
+class InvalidConfigurationKeyException(ConfigurationException):
+    """Raised when a configuration key is invalid."""
+
+    def __init__(self, key: str):
+        super().__init__(f"Invalid configuration key: '{key}'")
+        self.key = key
+
+
+class UnsupportedConfigurationFormatException(ConfigurationException):
+    """Raised when an unsupported configuration format is encountered."""
+
+    def __init__(self, format: str):
+        super().__init__(f"Unsupported configuration format: '{format}'")
+        self.format = format
+
+
+class ConfigurationLoadException(ConfigurationException):
+    """Raised when a configuration file fails to load."""
+    pass
